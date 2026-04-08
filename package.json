@@ -1,0 +1,44 @@
+{
+  "name": "cisco-network-simulator",
+  "version": "1.0.0",
+  "description": "Browser-Based Cisco Network Simulator with Konva.js visualization",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "next": "14.2.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "konva": "^9.3.6",
+    "react-konva": "^18.2.10",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "zustand": "^4.5.2",
+    "uuid": "^9.0.1",
+    "immer": "^10.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@types/react": "^18.3.2",
+    "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^9.0.8",
+    "@types/jest": "^29.5.12",
+    "typescript": "^5.4.5",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "@testing-library/react": "^15.0.7",
+    "@testing-library/jest-dom": "^6.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
