@@ -45,3 +45,8 @@ Thumbs.db
 
 # Docker
 data/
+
+# Go backend
+backend/cisco-lab-server.exe
+backend/cisco-lab-server
+*.db
