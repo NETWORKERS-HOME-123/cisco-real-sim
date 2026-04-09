@@ -46,7 +46,7 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
     pattern: 'exit',
     minArgs: 0,
     maxArgs: 0,
-    allowedModes: ['user', 'privileged', 'config', 'interface'],
+    allowedModes: ['user', 'privileged', 'config'],
     action: () => ({ type: 'EXIT', params: {} }),
     description: 'Exit current mode',
   },
@@ -284,6 +284,408 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
     action: () => ({ type: 'END', params: {} }),
     description: 'Exit to privileged EXEC mode',
   },
+  // OSPF configuration (config mode)
+  {
+    pattern: 'router ospf',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'ROUTER_OSPF', params: { processId: parseInt(args[0], 10) } }),
+    description: 'Configure OSPF routing process',
+  },
+  {
+    pattern: 'no router ospf',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['config'],
+    action: () => ({ type: 'NO_ROUTER_OSPF', params: {} }),
+    description: 'Remove OSPF routing process',
+  },
+  // OSPF router configuration mode commands
+  {
+    pattern: 'network',
+    minArgs: 3,
+    maxArgs: 3,
+    allowedModes: ['router'],
+    action: (args) => ({ 
+      type: 'OSPF_NETWORK', 
+      params: { network: args[0], wildcard: args[1], area: args[2] } 
+    }),
+    description: 'Enable OSPF on network (network wildcard area)',
+  },
+  {
+    pattern: 'no network',
+    minArgs: 2,
+    maxArgs: 2,
+    allowedModes: ['router'],
+    action: (args) => ({ 
+      type: 'NO_OSPF_NETWORK', 
+      params: { network: args[0], wildcard: args[1] } 
+    }),
+    description: 'Remove OSPF from network',
+  },
+  {
+    pattern: 'router-id',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['router'],
+    action: (args) => ({ type: 'OSPF_ROUTER_ID', params: { routerId: args[0] } }),
+    description: 'Set OSPF router ID',
+  },
+  {
+    pattern: 'passive-interface',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['router'],
+    action: (args) => ({ type: 'OSPF_PASSIVE_INTERFACE', params: { interface: args[0] } }),
+    description: 'Suppress OSPF hellos on interface',
+  },
+  {
+    pattern: 'no passive-interface',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['router'],
+    action: (args) => ({ type: 'NO_OSPF_PASSIVE_INTERFACE', params: { interface: args[0] } }),
+    description: 'Enable OSPF hellos on interface',
+  },
+  {
+    pattern: 'default-information originate',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['router'],
+    action: () => ({ type: 'OSPF_DEFAULT_ORIGINATE', params: {} }),
+    description: 'Distribute default route',
+  },
+  {
+    pattern: 'no default-information originate',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['router'],
+    action: () => ({ type: 'NO_OSPF_DEFAULT_ORIGINATE', params: {} }),
+    description: 'Stop distributing default route',
+  },
+  {
+    pattern: 'exit',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['router'],
+    action: () => ({ type: 'EXIT_ROUTER', params: {} }),
+    description: 'Exit router configuration mode',
+  },
+  // Layer 3 Switch configuration
+  {
+    pattern: 'ip routing',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['config'],
+    action: () => ({ type: 'IP_ROUTING', params: {} }),
+    description: 'Enable IP routing on Layer 3 switch',
+  },
+  {
+    pattern: 'no ip routing',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['config'],
+    action: () => ({ type: 'NO_IP_ROUTING', params: {} }),
+    description: 'Disable IP routing on Layer 3 switch',
+  },
+  // ACL configuration (config mode)
+  {
+    pattern: 'access-list',
+    minArgs: 3,
+    maxArgs: 100,
+    allowedModes: ['config'],
+    action: (args) => ({ 
+      type: 'ACCESS_LIST', 
+      params: { 
+        number: args[0],
+        action: args[1],
+        remainder: args.slice(2),
+      } 
+    }),
+    description: 'Configure numbered ACL (access-list num permit/deny ...)',
+  },
+  {
+    pattern: 'no access-list',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'NO_ACCESS_LIST', params: { number: args[0] } }),
+    description: 'Delete numbered ACL',
+  },
+  {
+    pattern: 'ip access-list standard',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'IP_ACCESS_LIST_STANDARD', params: { name: args[0] } }),
+    description: 'Create named standard ACL',
+  },
+  {
+    pattern: 'ip access-list extended',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'IP_ACCESS_LIST_EXTENDED', params: { name: args[0] } }),
+    description: 'Create named extended ACL',
+  },
+  {
+    pattern: 'no ip access-list',
+    minArgs: 2,
+    maxArgs: 2,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'NO_IP_ACCESS_LIST', params: { type: args[0], name: args[1] } }),
+    description: 'Delete named ACL',
+  },
+  // ACL mode commands (permit/deny rules inside named ACL)
+  {
+    pattern: 'permit',
+    minArgs: 1,
+    maxArgs: 10,
+    allowedModes: ['acl'],
+    action: (args) => ({ type: 'ACL_PERMIT', params: { args } }),
+    description: 'Add permit rule to ACL',
+  },
+  {
+    pattern: 'deny',
+    minArgs: 1,
+    maxArgs: 10,
+    allowedModes: ['acl'],
+    action: (args) => ({ type: 'ACL_DENY', params: { args } }),
+    description: 'Add deny rule to ACL',
+  },
+  {
+    pattern: 'remark',
+    minArgs: 1,
+    maxArgs: 20,
+    allowedModes: ['acl'],
+    action: (args) => ({ type: 'ACL_REMARK', params: { text: args.join(' ') } }),
+    description: 'Add remark to ACL',
+  },
+  {
+    pattern: 'exit',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['acl'],
+    action: () => ({ type: 'EXIT_ACL', params: {} }),
+    description: 'Exit ACL configuration mode',
+  },
+  // NAT configuration (config mode)
+  {
+    pattern: 'ip nat inside source static',
+    minArgs: 2,
+    maxArgs: 2,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'IP_NAT_STATIC', params: { local: args[0], global: args[1] } }),
+    description: 'Configure static NAT',
+  },
+  {
+    pattern: 'no ip nat inside source static',
+    minArgs: 1,
+    maxArgs: 2,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'NO_IP_NAT_STATIC', params: { local: args[0], global: args[1] || undefined } }),
+    description: 'Remove static NAT (local [global])',
+  },
+  {
+    pattern: 'ip nat pool',
+    minArgs: 4,
+    maxArgs: 4,
+    allowedModes: ['config'],
+    action: (args) => ({ 
+      type: 'IP_NAT_POOL', 
+      params: { 
+        name: args[0], 
+        start: args[1], 
+        end: args[2], 
+        netmask: args[3] 
+      } 
+    }),
+    description: 'Create NAT pool (ip nat pool name start end netmask)',
+  },
+  {
+    pattern: 'no ip nat pool',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'NO_IP_NAT_POOL', params: { name: args[0] } }),
+    description: 'Delete NAT pool',
+  },
+  {
+    pattern: 'ip nat inside source list',
+    minArgs: 3,
+    maxArgs: 3,
+    allowedModes: ['config'],
+    action: (args) => ({ 
+      type: 'IP_NAT_DYNAMIC', 
+      params: { 
+        acl: args[0], 
+        pool: args[1],
+        overload: args[2] === 'overload'
+      } 
+    }),
+    description: 'Configure dynamic NAT (ip nat inside source list acl pool overload)',
+  },
+  // STP configuration (config mode)
+  {
+    pattern: 'spanning-tree vlan',
+    minArgs: 2,
+    maxArgs: 2,
+    allowedModes: ['config'],
+    action: (args) => ({ 
+      type: 'SPANNING_TREE_VLAN_PRIORITY', 
+      params: { vlan: parseInt(args[0], 10), priority: parseInt(args[1], 10) } 
+    }),
+    description: 'Set STP priority for VLAN (spanning-tree vlan X priority Y)',
+  },
+  {
+    pattern: 'spanning-tree portfast',
+    minArgs: 0,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'SPANNING_TREE_PORTFAST', params: { edge: args[0] === 'edge' } }),
+    description: 'Enable PortFast on interface',
+  },
+  {
+    pattern: 'no spanning-tree portfast',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'NO_SPANNING_TREE_PORTFAST', params: {} }),
+    description: 'Disable PortFast on interface',
+  },
+  {
+    pattern: 'spanning-tree bpduguard enable',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'SPANNING_TREE_BPDUGUARD', params: { enabled: true } }),
+    description: 'Enable BPDU Guard on interface',
+  },
+  {
+    pattern: 'no spanning-tree bpduguard',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'SPANNING_TREE_BPDUGUARD', params: { enabled: false } }),
+    description: 'Disable BPDU Guard on interface',
+  },
+  {
+    pattern: 'spanning-tree cost',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'SPANNING_TREE_COST', params: { cost: parseInt(args[0], 10) } }),
+    description: 'Set STP port cost',
+  },
+  // DHCP configuration (config mode)
+  {
+    pattern: 'ip dhcp pool',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'IP_DHCP_POOL', params: { name: args[0] } }),
+    description: 'Create DHCP pool',
+  },
+  {
+    pattern: 'no ip dhcp pool',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['config'],
+    action: (args) => ({ type: 'NO_IP_DHCP_POOL', params: { name: args[0] } }),
+    description: 'Delete DHCP pool',
+  },
+  {
+    pattern: 'network',
+    minArgs: 2,
+    maxArgs: 2,
+    allowedModes: ['dhcp'],
+    action: (args) => ({ type: 'DHCP_NETWORK', params: { network: args[0], mask: args[1] } }),
+    description: 'Set DHCP pool network (in DHCP config mode)',
+  },
+  {
+    pattern: 'default-router',
+    minArgs: 1,
+    maxArgs: 8,
+    allowedModes: ['dhcp'],
+    action: (args) => ({ type: 'DHCP_DEFAULT_ROUTER', params: { routers: args } }),
+    description: 'Set default gateway for DHCP clients',
+  },
+  {
+    pattern: 'dns-server',
+    minArgs: 1,
+    maxArgs: 8,
+    allowedModes: ['dhcp'],
+    action: (args) => ({ type: 'DHCP_DNS_SERVER', params: { servers: args } }),
+    description: 'Set DNS servers for DHCP clients',
+  },
+  {
+    pattern: 'domain-name',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['dhcp'],
+    action: (args) => ({ type: 'DHCP_DOMAIN_NAME', params: { name: args[0] } }),
+    description: 'Set domain name for DHCP clients',
+  },
+  {
+    pattern: 'lease',
+    minArgs: 3,
+    maxArgs: 3,
+    allowedModes: ['dhcp'],
+    action: (args) => ({ 
+      type: 'DHCP_LEASE', 
+      params: { 
+        days: parseInt(args[0], 10), 
+        hours: parseInt(args[1], 10), 
+        minutes: parseInt(args[2], 10) 
+      } 
+    }),
+    description: 'Set lease time (days hours minutes)',
+  },
+  {
+    pattern: 'ip dhcp excluded-address',
+    minArgs: 1,
+    maxArgs: 2,
+    allowedModes: ['config'],
+    action: (args) => ({ 
+      type: 'IP_DHCP_EXCLUDED', 
+      params: { 
+        low: args[0], 
+        high: args[1] || args[0] 
+      } 
+    }),
+    description: 'Exclude IP address(es) from DHCP pool',
+  },
+  {
+    pattern: 'no ip dhcp excluded-address',
+    minArgs: 1,
+    maxArgs: 2,
+    allowedModes: ['config'],
+    action: (args) => ({ 
+      type: 'NO_IP_DHCP_EXCLUDED', 
+      params: { 
+        low: args[0], 
+        high: args[1] || args[0] 
+      } 
+    }),
+    description: 'Remove excluded IP address(es)',
+  },
+  {
+    pattern: 'ip helper-address',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'IP_HELPER_ADDRESS', params: { server: args[0] } }),
+    description: 'Configure DHCP relay on interface',
+  },
+  {
+    pattern: 'no ip helper-address',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'NO_IP_HELPER_ADDRESS', params: {} }),
+    description: 'Remove DHCP relay from interface',
+  },
   // VLAN configuration (config mode)
   {
     pattern: 'vlan',
@@ -325,6 +727,132 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
     allowedModes: ['privileged'],
     action: () => ({ type: 'SHOW_INTERFACES_TRUNK', params: {} }),
     description: 'Show trunk interfaces',
+  },
+  // OSPF show commands
+  {
+    pattern: 'show ip ospf neighbor',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_OSPF_NEIGHBOR', params: {} }),
+    description: 'Show OSPF neighbors',
+  },
+  {
+    pattern: 'show ip ospf interface',
+    minArgs: 0,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_IP_OSPF_INTERFACE', params: { interface: args[0] } }),
+    description: 'Show OSPF interface status',
+  },
+  {
+    pattern: 'show ip ospf database',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_OSPF_DATABASE', params: {} }),
+    description: 'Show OSPF link-state database',
+  },
+  {
+    pattern: 'show ip ospf',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_OSPF', params: {} }),
+    description: 'Show OSPF process information',
+  },
+  {
+    pattern: 'show ip route ospf',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_ROUTE_OSPF', params: {} }),
+    description: 'Show OSPF routes',
+  },
+
+  // ACL show commands
+  {
+    pattern: 'show access-lists',
+    minArgs: 0,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_ACCESS_LISTS', params: { name: args[0] } }),
+    description: 'Show access lists',
+  },
+  {
+    pattern: 'show ip access-lists',
+    minArgs: 0,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_IP_ACCESS_LISTS', params: { name: args[0] } }),
+    description: 'Show IP access lists',
+  },
+  // NAT show commands
+  {
+    pattern: 'show ip nat translations',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_NAT_TRANSLATIONS', params: {} }),
+    description: 'Show NAT translation table',
+  },
+  {
+    pattern: 'show ip nat statistics',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_NAT_STATISTICS', params: {} }),
+    description: 'Show NAT statistics',
+  },
+  // STP show commands
+  {
+    pattern: 'show spanning-tree',
+    minArgs: 0,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_SPANNING_TREE', params: { vlan: args[0] ? parseInt(args[0], 10) : undefined } }),
+    description: 'Show spanning-tree information',
+  },
+  {
+    pattern: 'show spanning-tree vlan',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_SPANNING_TREE_VLAN', params: { vlan: parseInt(args[0], 10) } }),
+    description: 'Show spanning-tree for specific VLAN',
+  },
+  {
+    pattern: 'show spanning-tree summary',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_SPANNING_TREE_SUMMARY', params: {} }),
+    description: 'Show spanning-tree summary',
+  },
+  // DHCP show commands
+  {
+    pattern: 'show ip dhcp pool',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_DHCP_POOL', params: {} }),
+    description: 'Show DHCP pools',
+  },
+  {
+    pattern: 'show ip dhcp binding',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_DHCP_BINDING', params: {} }),
+    description: 'Show DHCP bindings',
+  },
+  {
+    pattern: 'show ip dhcp server statistics',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IP_DHCP_STATISTICS', params: {} }),
+    description: 'Show DHCP server statistics',
   },
 
   // Interface config commands
@@ -420,6 +948,65 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
     action: (args) => ({ type: 'SWITCHPORT_TRUNK_NATIVE', params: { vlan: parseInt(args[0], 10) } }),
     description: 'Set native VLAN on trunk',
   },
+  // Subinterface commands (Router-on-a-Stick)
+  {
+    pattern: 'encapsulation dot1q',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'ENCAPSULATION_DOT1Q', params: { vlan: parseInt(args[0], 10) } }),
+    description: 'Set 802.1Q encapsulation VLAN',
+  },
+  // ACL application on interface
+  {
+    pattern: 'ip access-group',
+    minArgs: 2,
+    maxArgs: 2,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'IP_ACCESS_GROUP', params: { acl: args[0], direction: args[1] } }),
+    description: 'Apply ACL to interface (in/out)',
+  },
+  {
+    pattern: 'no ip access-group',
+    minArgs: 0,
+    maxArgs: 2,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'NO_IP_ACCESS_GROUP', params: { acl: args[0] || undefined, direction: args[1] || undefined } }),
+    description: 'Remove ACL from interface',
+  },
+  // NAT interface commands
+  {
+    pattern: 'ip nat inside',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'IP_NAT_INSIDE', params: {} }),
+    description: 'Mark interface as NAT inside',
+  },
+  {
+    pattern: 'no ip nat inside',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'NO_IP_NAT_INSIDE', params: {} }),
+    description: 'Remove NAT inside from interface',
+  },
+  {
+    pattern: 'ip nat outside',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'IP_NAT_OUTSIDE', params: {} }),
+    description: 'Mark interface as NAT outside',
+  },
+  {
+    pattern: 'no ip nat outside',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'NO_IP_NAT_OUTSIDE', params: {} }),
+    description: 'Remove NAT outside from interface',
+  },
   {
     pattern: 'duplex',
     minArgs: 1,
@@ -436,6 +1023,39 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
     action: (args) => ({ type: 'SPEED', params: { value: args[0] } }),
     description: 'Set interface speed',
   },
+  // OSPF interface commands
+  {
+    pattern: 'ip ospf cost',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'IP_OSPF_COST', params: { cost: parseInt(args[0], 10) } }),
+    description: 'Set OSPF interface cost',
+  },
+  {
+    pattern: 'ip ospf priority',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'IP_OSPF_PRIORITY', params: { priority: parseInt(args[0], 10) } }),
+    description: 'Set OSPF interface priority (0-255)',
+  },
+  {
+    pattern: 'ip ospf hello-interval',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'IP_OSPF_HELLO_INTERVAL', params: { interval: parseInt(args[0], 10) } }),
+    description: 'Set OSPF hello interval in seconds',
+  },
+  {
+    pattern: 'ip ospf dead-interval',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'IP_OSPF_DEAD_INTERVAL', params: { interval: parseInt(args[0], 10) } }),
+    description: 'Set OSPF dead interval in seconds',
+  },
   {
     pattern: 'exit',
     minArgs: 0,
@@ -445,6 +1065,204 @@ const COMMAND_DEFINITIONS: CommandDef[] = [
     description: 'Exit interface configuration mode',
   },
   
+  // IPv6 commands (interface mode)
+  {
+    pattern: 'ipv6 address',
+    minArgs: 2,
+    maxArgs: 3,
+    allowedModes: ['interface'],
+    action: (args) => ({
+      type: 'IPV6_ADDRESS',
+      params: { 
+        address: args[0], 
+        prefixLength: parseInt(args[1], 10),
+        eui64: args[2] === 'eui-64'
+      },
+    }),
+    description: 'Set IPv6 address (ipv6 address address/prefix-length [eui-64])',
+  },
+  {
+    pattern: 'no ipv6 address',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'NO_IPV6_ADDRESS', params: {} }),
+    description: 'Remove IPv6 address',
+  },
+  {
+    pattern: 'ipv6 enable',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'IPV6_ENABLE', params: {} }),
+    description: 'Enable IPv6 processing on interface',
+  },
+  {
+    pattern: 'no ipv6 enable',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'NO_IPV6_ENABLE', params: {} }),
+    description: 'Disable IPv6 processing on interface',
+  },
+  // IPv6 show commands
+  {
+    pattern: 'show ipv6 interface brief',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IPV6_INTERFACE_BRIEF', params: {} }),
+    description: 'Show IPv6 interface brief',
+  },
+  {
+    pattern: 'show ipv6 interface',
+    minArgs: 0,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_IPV6_INTERFACE', params: { interface: args[0] } }),
+    description: 'Show IPv6 interface details',
+  },
+  {
+    pattern: 'show ipv6 route',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_IPV6_ROUTE', params: {} }),
+    description: 'Show IPv6 routing table',
+  },
+  // IPv6 static routes
+  {
+    pattern: 'ipv6 route',
+    minArgs: 2,
+    maxArgs: 3,
+    allowedModes: ['config'],
+    action: (args) => ({
+      type: 'IPV6_ROUTE',
+      params: { 
+        network: args[0],
+        nextHop: args[1] === 'null0' ? null : args[1],
+        interface: args[2] || null
+      },
+    }),
+    description: 'Add IPv6 static route',
+  },
+  {
+    pattern: 'no ipv6 route',
+    minArgs: 2,
+    maxArgs: 3,
+    allowedModes: ['config'],
+    action: (args) => ({
+      type: 'NO_IPV6_ROUTE',
+      params: { 
+        network: args[0],
+        nextHop: args[1] === 'null0' ? null : args[1],
+        interface: args[2] || null
+      },
+    }),
+    description: 'Remove IPv6 static route',
+  },
+  // Port Security commands (interface mode)
+  {
+    pattern: 'switchport port-security',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'SWITCHPORT_PORT_SECURITY', params: { enabled: true } }),
+    description: 'Enable port security',
+  },
+  {
+    pattern: 'no switchport port-security',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'SWITCHPORT_PORT_SECURITY', params: { enabled: false } }),
+    description: 'Disable port security',
+  },
+  {
+    pattern: 'switchport port-security maximum',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'SWITCHPORT_PORT_SECURITY_MAXIMUM', params: { max: parseInt(args[0], 10) } }),
+    description: 'Set maximum secure MAC addresses',
+  },
+  {
+    pattern: 'switchport port-security violation',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['interface'],
+    action: (args) => ({ type: 'SWITCHPORT_PORT_SECURITY_VIOLATION', params: { mode: args[0] } }),
+    description: 'Set violation mode (protect/restrict/shutdown)',
+  },
+  {
+    pattern: 'switchport port-security mac-address',
+    minArgs: 1,
+    maxArgs: 2,
+    allowedModes: ['interface'],
+    action: (args) => ({ 
+      type: 'SWITCHPORT_PORT_SECURITY_MAC', 
+      params: { 
+        mac: args[0],
+        vlan: args[1] ? parseInt(args[1], 10) : undefined 
+      } 
+    }),
+    description: 'Add secure MAC address',
+  },
+  {
+    pattern: 'no switchport port-security mac-address',
+    minArgs: 1,
+    maxArgs: 2,
+    allowedModes: ['interface'],
+    action: (args) => ({ 
+      type: 'NO_SWITCHPORT_PORT_SECURITY_MAC', 
+      params: { 
+        mac: args[0],
+        vlan: args[1] ? parseInt(args[1], 10) : undefined 
+      } 
+    }),
+    description: 'Remove secure MAC address',
+  },
+  {
+    pattern: 'switchport port-security mac-address sticky',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'SWITCHPORT_PORT_SECURITY_STICKY', params: { enabled: true } }),
+    description: 'Enable sticky MAC learning',
+  },
+  {
+    pattern: 'no switchport port-security mac-address sticky',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['interface'],
+    action: () => ({ type: 'SWITCHPORT_PORT_SECURITY_STICKY', params: { enabled: false } }),
+    description: 'Disable sticky MAC learning',
+  },
+  // Port Security show commands
+  {
+    pattern: 'show port-security',
+    minArgs: 0,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_PORT_SECURITY', params: { interface: args[0] } }),
+    description: 'Show port security status',
+  },
+  {
+    pattern: 'show port-security interface',
+    minArgs: 1,
+    maxArgs: 1,
+    allowedModes: ['privileged'],
+    action: (args) => ({ type: 'SHOW_PORT_SECURITY_INTERFACE', params: { interface: args[0] } }),
+    description: 'Show port security for interface',
+  },
+  {
+    pattern: 'show port-security address',
+    minArgs: 0,
+    maxArgs: 0,
+    allowedModes: ['privileged'],
+    action: () => ({ type: 'SHOW_PORT_SECURITY_ADDRESS', params: {} }),
+    description: 'Show secure MAC addresses',
+  },
   // File operations
   {
     pattern: 'write memory',
@@ -503,6 +1321,12 @@ export function getPrompt(state: CLIParserState, hostname: string): string {
       return `${hostname}(config)#`;
     case 'interface':
       return `${hostname}(config-if)#`;
+    case 'router':
+      return `${hostname}(config-router)#`;
+    case 'acl':
+      return `${hostname}(config-${state.configTarget?.startsWith('ext-') ? 'ext' : 'std'}-nacl)#`;
+    case 'dhcp':
+      return `${hostname}(dhcp-config)#`;
     default:
       return `${hostname}>`;
   }
@@ -513,6 +1337,7 @@ export function getPrompt(state: CLIParserState, hostname: string): string {
 // ============================================================================
 
 const MAX_INPUT_LENGTH = 1024;
+const MAX_HISTORY_SIZE = 1000;
 const MAX_TOKEN_LENGTH = 256;
 const ALLOWED_CHARS = /^[\x20-\x7E]*$/; // Printable ASCII only
 
@@ -616,10 +1441,10 @@ function findCommand(tokens: string[], currentMode: CLIMode): CommandDef | 'ambi
   if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0];
 
-  // Check if one is an exact match (all pattern tokens match exactly)
+  // Check if one is an exact match (all pattern tokens match exactly, case-insensitive)
   const exactMatch = matches.find(def => {
     const patternTokens = def.pattern.split(' ');
-    return patternTokens.every((pt, i) => tokens[i] === pt);
+    return patternTokens.every((pt, i) => tokens[i]?.toLowerCase() === pt.toLowerCase());
   });
   if (exactMatch) return exactMatch;
 
@@ -722,7 +1547,7 @@ export function parseCommand(
 
     // Add to history
     if (trimmed !== '' && state.history[state.history.length - 1] !== trimmed) {
-      if (state.history.length >= 1000) state.history.shift();
+      if (state.history.length >= MAX_HISTORY_SIZE) state.history.shift();
       state.history.push(trimmed);
     }
     state.historyIndex = state.history.length;
@@ -739,7 +1564,7 @@ export function parseCommand(
   // Add to history (after successful tokenization)
   if (trimmed !== '' && state.history[state.history.length - 1] !== trimmed) {
     // Limit history size to prevent memory issues
-    if (state.history.length >= 1000) {
+    if (state.history.length >= MAX_HISTORY_SIZE) {
       state.history.shift();
     }
     state.history.push(trimmed);
@@ -809,13 +1634,47 @@ export function transitionMode(
     case 'INTERFACE': {
       state.mode = 'interface';
       // Normalize loopback name: "Loopback 0" or "loopback0" → "Loopback0"
+      // Handle subinterface: "GigabitEthernet0/0.10" stays as-is
+      // Handle SVI: "vlan 10" → "Vlan10"
       const ifName = action.params.interface;
       const loMatch = ifName.match(/^[Ll]oopback\s*(\d+)$/);
-      state.configTarget = loMatch ? `Loopback${loMatch[1]}` : ifName;
+      const vlanMatch = ifName.match(/^[Vv]lan\s*(\d+)$/);
+      if (loMatch) {
+        state.configTarget = `Loopback${loMatch[1]}`;
+      } else if (vlanMatch) {
+        state.configTarget = `Vlan${vlanMatch[1]}`;
+      } else {
+        state.configTarget = ifName;
+      }
+      break;
+    }
+    case 'ROUTER_OSPF': {
+      state.mode = 'router';
+      state.configTarget = `ospf-${action.params.processId}`;
+      break;
+    }
+    case 'IP_ACCESS_LIST_STANDARD':
+    case 'IP_ACCESS_LIST_EXTENDED': {
+      state.mode = 'acl';
+      state.configTarget = action.params.name;
+      break;
+    }
+    case 'IP_DHCP_POOL': {
+      state.mode = 'dhcp';
+      state.configTarget = action.params.name;
       break;
     }
     case 'EXIT':
       if (state.mode === 'interface') {
+        state.mode = 'config';
+        state.configTarget = null;
+      } else if (state.mode === 'router') {
+        state.mode = 'config';
+        state.configTarget = null;
+      } else if (state.mode === 'acl') {
+        state.mode = 'config';
+        state.configTarget = null;
+      } else if (state.mode === 'dhcp') {
         state.mode = 'config';
         state.configTarget = null;
       } else if (state.mode === 'config') {
@@ -826,6 +1685,14 @@ export function transitionMode(
       }
       break;
     case 'EXIT_INTERFACE':
+      state.mode = 'config';
+      state.configTarget = null;
+      break;
+    case 'EXIT_ROUTER':
+      state.mode = 'config';
+      state.configTarget = null;
+      break;
+    case 'EXIT_ACL':
       state.mode = 'config';
       state.configTarget = null;
       break;

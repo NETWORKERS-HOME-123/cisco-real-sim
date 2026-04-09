@@ -60,6 +60,24 @@ export function generateInterfaces(deviceType: DeviceType, deviceId: string): In
         accessVlan: 0,
         trunkVlans: [],
         nativeVlan: 0,
+        // Subinterface fields
+        isSubinterface: false,
+        parentInterface: null,
+        encapsulation: null,
+        // IPv6 fields
+        ipv6: null,
+        ipv6PrefixLength: 64,
+        ipv6LinkLocal: null,
+        // Port Security (not applicable to routers)
+        portSecurity: {
+          enabled: false,
+          maxMacAddresses: 1,
+          violationMode: 'shutdown',
+          stickyMacEnabled: false,
+          secureMacAddresses: [],
+          violationCount: 0,
+          errDisabled: false,
+        },
       });
     }
   } else if (deviceType === 'switch') {
@@ -80,6 +98,24 @@ export function generateInterfaces(deviceType: DeviceType, deviceId: string): In
         accessVlan: 1,
         trunkVlans: [],
         nativeVlan: 1,
+        // Subinterface fields
+        isSubinterface: false,
+        parentInterface: null,
+        encapsulation: null,
+        // IPv6 fields
+        ipv6: null,
+        ipv6PrefixLength: 64,
+        ipv6LinkLocal: null,
+        // Port Security
+        portSecurity: {
+          enabled: false,
+          maxMacAddresses: 1,
+          violationMode: 'shutdown',
+          stickyMacEnabled: false,
+          secureMacAddresses: [],
+          violationCount: 0,
+          errDisabled: false,
+        },
       });
     }
   }
@@ -111,7 +147,7 @@ export function createDevice(
     vlanDatabase.push(defaultVLAN);
   }
   
-  return {
+  const device: Device = {
     id,
     name,
     type,
@@ -125,7 +161,37 @@ export function createDevice(
     runningConfig: [],
     vlans,
     vlanDatabase,
+    ospfProcess: null,
+    ospfConfig: null,
+    ipRouting: false,
+    acls: new Map(),
+    aclApplications: new Map(),
+    natConfig: {
+      insideInterfaces: new Set(),
+      outsideInterfaces: new Set(),
+      staticEntries: new Map(),
+      pools: new Map(),
+      translations: new Map(),
+    },
+    stpConfig: {
+      enabled: true,
+      mode: 'pvst',
+      vlanInstances: new Map(),
+      globalDefaults: {
+        priority: 32768,
+        maxAge: 20,
+        helloTime: 2,
+        forwardDelay: 15,
+      },
+    },
+    dhcpConfig: {
+      enabled: true,
+      pools: new Map(),
+      relayTargets: new Map(),
+    },
   };
+  
+  return device;
 }
 
 // Create a new topology
@@ -315,6 +381,20 @@ export function serializeTopology(topology: Topology): SerializedTopology {
       runningConfig: device.runningConfig,
       vlans: Array.from(device.vlans.entries()),
       vlanDatabase: device.vlanDatabase,
+      ospfProcess: device.ospfProcess,
+      ospfConfig: device.ospfConfig,
+      acls: Array.from(device.acls.entries()),
+      aclApplications: Array.from(device.aclApplications.entries()),
+      natConfig: device.natConfig,
+      stpConfig: device.stpConfig,
+      dhcpConfig: device.dhcpConfig ? {
+        enabled: device.dhcpConfig.enabled,
+        pools: Array.from(device.dhcpConfig.pools.entries()).map(([k, pool]) => [k, {
+          ...pool,
+          bindings: Array.from(pool.bindings.entries()),
+        }]),
+        relayTargets: Array.from(device.dhcpConfig.relayTargets.entries()),
+      } : undefined,
     });
   });
   
@@ -329,22 +409,46 @@ export function serializeTopology(topology: Topology): SerializedTopology {
 export function deserializeTopology(data: SerializedTopology): Topology {
   const topology = createTopology();
   
+  // Security: Filter dangerous keys to prevent prototype pollution
+  const filterDangerousKeys = <T extends Record<string, any>>(obj: T): T => {
+    const dangerous = ['__proto__', 'constructor', 'prototype'];
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (!dangerous.includes(key)) {
+        result[key] = value;
+      }
+    }
+    return result as T;
+  };
+  
   data.devices.forEach((deviceData) => {
+    // Security: Filter dangerous keys from device data
+    const safeDeviceData = filterDangerousKeys(deviceData);
+    
     // Ensure VLAN fields have defaults for backward compatibility
-    const interfaces: Interface[] = deviceData.interfaces.map(i => ({
-      ...i,
+    const interfaces: Interface[] = safeDeviceData.interfaces.map((i: Interface) => ({
+      ...filterDangerousKeys(i),
       status: (i.isShutdown ? 'administratively down' : (i.connectedTo ? 'up' : 'down')) as Interface['status'],
       switchportMode: i.switchportMode || 'dynamic',
       accessVlan: i.accessVlan ?? 1,
       trunkVlans: i.trunkVlans || [],
       nativeVlan: i.nativeVlan ?? 1,
+      portSecurity: i.portSecurity || {
+        enabled: false,
+        maxMacAddresses: 1,
+        violationMode: 'shutdown',
+        stickyMacEnabled: false,
+        secureMacAddresses: [],
+        violationCount: 0,
+        errDisabled: false,
+      },
     }));
     
     // Rebuild VLAN structures for switches
     const vlans = new Map<number, VLAN>();
-    const vlanDatabase: VLAN[] = deviceData.vlanDatabase || [];
+    const vlanDatabase: VLAN[] = safeDeviceData.vlanDatabase || [];
     
-    if (deviceData.type === 'switch' && vlanDatabase.length === 0) {
+    if (safeDeviceData.type === 'switch' && vlanDatabase.length === 0) {
       // Create default VLAN 1 if none exist
       const defaultVLAN: VLAN = {
         id: 1,
@@ -358,12 +462,47 @@ export function deserializeTopology(data: SerializedTopology): Topology {
     }
     
     const device: Device = {
-      ...deviceData,
+      ...safeDeviceData,
       interfaces,
       macTable: new Map(deviceData.macTable),
       arpTable: new Map(deviceData.arpTable),
       vlans,
       vlanDatabase,
+      ipRouting: deviceData.ipRouting ?? false,
+      ospfProcess: deviceData.ospfProcess ?? null,
+      ospfConfig: deviceData.ospfConfig ?? null,
+      acls: new Map(deviceData.acls || []),
+      aclApplications: new Map(deviceData.aclApplications || []),
+      natConfig: deviceData.natConfig || {
+        insideInterfaces: new Set(),
+        outsideInterfaces: new Set(),
+        staticEntries: new Map(),
+        pools: new Map(),
+        translations: new Map(),
+      },
+      stpConfig: deviceData.stpConfig || {
+        enabled: true,
+        mode: 'pvst',
+        vlanInstances: new Map(),
+        globalDefaults: {
+          priority: 32768,
+          maxAge: 20,
+          helloTime: 2,
+          forwardDelay: 15,
+        },
+      },
+      dhcpConfig: deviceData.dhcpConfig ? {
+        enabled: deviceData.dhcpConfig.enabled,
+        pools: new Map((deviceData.dhcpConfig.pools || []).map(([k, pool]: [string, any]) => [k, {
+          ...pool,
+          bindings: new Map(pool.bindings || []),
+        }])),
+        relayTargets: new Map(deviceData.dhcpConfig.relayTargets || []),
+      } : {
+        enabled: true,
+        pools: new Map(),
+        relayTargets: new Map(),
+      },
     };
     topology.devices.set(device.id, device);
   });

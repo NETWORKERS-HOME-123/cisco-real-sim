@@ -18,6 +18,10 @@ import {
   Route,
 } from '../types';
 import { getConnectedInterface, findDeviceByName } from '../topology/topologyEngine';
+import { learnMAC, lookupMAC, initializeMACTable } from '../utils/macTable';
+import { learnARP, lookupARP } from '../utils/arpTable';
+import { isValidIPv4, isValidIPv6, sanitizeInput, LIMITS } from '../utils/security';
+import { checkPacketAgainstACLs } from '../acl/aclEngine';
 
 // ============================================================================
 // Event Queue - Optimized with Priority Queue (Min-Heap)
@@ -226,9 +230,9 @@ export function processSwitchPacket(
   // Determine the VLAN for this frame
   const frameVlan = getFrameVlan(ingressInterface);
 
-  // Learn source MAC (associated with ingress interface)
+  // Learn source MAC (associated with ingress interface) with bounds checking
   if (packet.srcMAC && packet.srcMAC !== 'FF:FF:FF:FF:FF:FF') {
-    device.macTable.set(packet.srcMAC, ingressInterface.id);
+    learnMAC(device, packet.srcMAC, ingressInterface.id, frameVlan);
   }
 
   if (packet.dstMAC === 'FF:FF:FF:FF:FF:FF') {
@@ -237,8 +241,8 @@ export function processSwitchPacket(
     return;
   }
 
-  // Lookup destination MAC in MAC table
-  const destInterfaceId = device.macTable.get(packet.dstMAC) || null;
+  // Lookup destination MAC in MAC table (with aging support)
+  const destInterfaceId = lookupMAC(device, packet.dstMAC);
 
   if (destInterfaceId) {
     // Verify destination port is in the same VLAN before forwarding
@@ -284,6 +288,22 @@ export function processRouterPacket(
   ingressInterface: Interface,
   queue: EventQueue
 ): void {
+  // Check ingress ACL for IP packets
+  if (packet.protocol !== 'ARP' && packet.srcIP && packet.dstIP) {
+    const permitted = checkPacketAgainstACLs(
+      device,
+      ingressInterface.name,
+      packet,
+      packet.srcIP,
+      packet.dstIP,
+      'in'
+    );
+    if (!permitted) {
+      // Packet denied by ACL - silently drop
+      return;
+    }
+  }
+
   // Handle ARP packets
   if (packet.protocol === 'ARP') {
     const arpPayload = packet.payload as ARPPayload;
@@ -316,8 +336,8 @@ export function processRouterPacket(
         }
       }
     } else if (arpPayload.operation === 'reply') {
-      // Update ARP table
-      device.arpTable.set(arpPayload.senderIP, arpPayload.senderMAC);
+      // Update ARP table with aging
+      learnARP(device, arpPayload.senderIP, arpPayload.senderMAC);
     }
     return;
   }
@@ -363,7 +383,7 @@ function handleLocalICMP(
     );
 
     // We need to resolve the destination MAC
-    const dstMAC = device.arpTable.get(packet.srcIP!);
+    const dstMAC = lookupARP(device, packet.srcIP!);
     
     if (dstMAC) {
       replyPacket.dstMAC = dstMAC;
@@ -452,13 +472,31 @@ function forwardIPPacket(
     return;
   }
 
+  // Check egress ACL before forwarding
+  if (packet.srcIP && packet.dstIP) {
+    const permitted = checkPacketAgainstACLs(
+      device,
+      outInterface.name,
+      packet,
+      packet.srcIP,
+      packet.dstIP,
+      'out'
+    );
+    if (!permitted) {
+      // Packet denied by ACL - silently drop
+      return;
+    }
+  }
+
   // Update source MAC to outgoing interface
   packet.srcMAC = outInterface.mac;
 
   // Resolve destination MAC
-  let dstMAC: string | undefined;
+  let dstMAC: string | null = null;
   const targetIP = route.nextHop || packet.dstIP;
-  dstMAC = device.arpTable.get(targetIP);
+  if (targetIP) {
+    dstMAC = lookupARP(device, targetIP);
+  }
 
   if (dstMAC) {
     packet.dstMAC = dstMAC;
@@ -518,6 +556,7 @@ export function findRoute(device: Device, dstIP: string): Route | null {
         protocol: 'C',
         metric: 0,
         isLocal: true,
+        isIPv6: false,
       };
     }
   }
@@ -620,6 +659,7 @@ export function addConnectedRoutes(device: Device): void {
         protocol: 'C',
         metric: 0,
         isLocal: true,
+        isIPv6: false,
       });
     }
   }
@@ -654,6 +694,7 @@ export function addStaticRoute(
     protocol: 'S',
     metric: 1,
     isLocal: false,
+    isIPv6: false,
   });
 
   return true;
