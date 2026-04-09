@@ -1,6 +1,9 @@
 package database
 
-import "log"
+import (
+	"log"
+	"strings"
+)
 
 func Migrate() error {
 	migrations := []string{
@@ -43,13 +46,17 @@ func Migrate() error {
 			details TEXT NOT NULL,
 			graded_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`,
 		`CREATE INDEX IF NOT EXISTS idx_labs_user ON labs(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_grades_user ON grade_results(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_grades_lab ON grade_results(lab_id)`,
 	}
 	for _, m := range migrations {
 		if _, err := DB.Exec(m); err != nil {
-			return err
+			// Ignore ALTER TABLE errors (column already exists)
+			if !strings.Contains(err.Error(), "duplicate column") {
+				return err
+			}
 		}
 	}
 	log.Println("database migrations complete")

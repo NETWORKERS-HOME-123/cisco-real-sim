@@ -1,16 +1,21 @@
 /** @type {import('next').NextConfig} */
+const isExport = process.env.NEXT_EXPORT === '1';
+
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  ...(isExport ? { output: 'export' } : {}),
   typescript: {
     ignoreBuildErrors: false,
   },
-  async rewrites() {
-    return [
-      { source: '/api/:path*', destination: 'http://localhost:3000/api/:path*' },
-      { source: '/ws', destination: 'http://localhost:3000/ws' },
-    ];
-  },
+  ...(!isExport ? {
+    async rewrites() {
+      return [
+        { source: '/api/:path*', destination: 'http://localhost:3000/api/:path*' },
+        { source: '/ws', destination: 'http://localhost:3000/ws' },
+      ];
+    },
+  } : {}),
   async headers() {
     return [
       {

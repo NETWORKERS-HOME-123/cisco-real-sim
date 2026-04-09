@@ -104,3 +104,24 @@ export async function gradeLab(labId: string, presetId: string): Promise<GradeRe
     body: JSON.stringify({ presetId }),
   });
 }
+
+// Admin
+export async function getAdminDashboard(): Promise<{ stats: { users: number; labs: number; presets: number; grades: number } }> {
+  return request('/admin/dashboard');
+}
+
+export async function getAdminUsers(): Promise<Array<{ id: string; username: string; displayName: string; isAdmin: boolean; createdAt: string; labCount: number; gradeCount: number }>> {
+  return request('/admin/users');
+}
+
+export async function getAdminLabs(): Promise<Array<{ id: string; name: string; description: string; owner: string; createdAt: string; updatedAt: string }>> {
+  return request('/admin/labs');
+}
+
+export async function getAdminGrades(): Promise<Array<{ id: string; score: number; total: number; passed: number; gradedAt: string; username: string; presetName: string }>> {
+  return request('/admin/grades');
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  await request(`/admin/users/${id}`, { method: 'DELETE' });
+}

@@ -7,15 +7,12 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import dynamicImport from 'next/dynamic';
-import { Toolbar } from '../components/Toolbar';
-import { Terminal } from '../components/Terminal';
-import { PropertiesPanel } from '../components/PropertiesPanel';
-import { useSimulationStore } from '../stores/simulationStore';
 
-// Force dynamic rendering - no SSR
-export const dynamic = 'force-dynamic';
+// Dynamically import all components that use browser APIs to avoid SSR issues
+const Toolbar = dynamicImport(() => import('../components/Toolbar').then(m => ({ default: m.Toolbar })), { ssr: false });
+const Terminal = dynamicImport(() => import('../components/Terminal').then(m => ({ default: m.Terminal })), { ssr: false });
+const PropertiesPanel = dynamicImport(() => import('../components/PropertiesPanel').then(m => ({ default: m.PropertiesPanel })), { ssr: false });
 
-// Dynamically import NetworkCanvas to avoid SSR issues with Konva
 const NetworkCanvas = dynamicImport(() => import('../components/NetworkCanvas'), {
   ssr: false,
   loading: () => (
@@ -39,6 +36,8 @@ const NetworkCanvas = dynamicImport(() => import('../components/NetworkCanvas'),
 // ============================================================================
 
 export default function Home() {
+  // eslint-disable-next-line
+  const { useSimulationStore } = require('../stores/simulationStore');
   const { initWorker, ui } = useSimulationStore();
   const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 600 });
   const [isClient, setIsClient] = useState(false);

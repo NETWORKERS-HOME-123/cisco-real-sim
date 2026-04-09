@@ -34,6 +34,9 @@ func main() {
 	if err := presets.Seed(); err != nil {
 		log.Fatalf("seed presets: %v", err)
 	}
+	if err := presets.SeedAdmin(); err != nil {
+		log.Fatalf("seed admin: %v", err)
+	}
 
 	// Fiber
 	app := fiber.New(fiber.Config{
@@ -80,6 +83,15 @@ func main() {
 	presetsH := &handlers.PresetsHandler{}
 	protected.Get("/presets", presetsH.List)
 	protected.Get("/presets/:id", presetsH.Get)
+
+	// Admin
+	admin := &handlers.AdminHandler{}
+	adminGroup := protected.Group("/admin", middleware.RequireAdmin())
+	adminGroup.Get("/dashboard", admin.Dashboard)
+	adminGroup.Get("/users", admin.ListUsers)
+	adminGroup.Get("/labs", admin.ListAllLabs)
+	adminGroup.Get("/grades", admin.ListAllGrades)
+	adminGroup.Delete("/users/:id", admin.DeleteUser)
 
 	// WebSocket
 	app.Use("/ws", wsHandler.Upgrade(cfg))

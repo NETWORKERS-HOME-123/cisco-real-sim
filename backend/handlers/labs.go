@@ -110,6 +110,8 @@ func (h *LabsHandler) Delete(c *fiber.Ctx) error {
 	userId := c.Locals("userId").(string)
 	labId := c.Params("id")
 
+	// Delete related grades first
+	database.DB.Exec("DELETE FROM grade_results WHERE lab_id = ?", labId)
 	result, err := database.DB.Exec("DELETE FROM labs WHERE id = ? AND user_id = ?", labId, userId)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "database error"})

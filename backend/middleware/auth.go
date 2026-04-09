@@ -14,6 +14,7 @@ import (
 type Claims struct {
 	UserID   string `json:"userId"`
 	Username string `json:"username"`
+	IsAdmin  bool   `json:"isAdmin"`
 	jwt.RegisteredClaims
 }
 
@@ -21,6 +22,7 @@ func GenerateToken(user *models.User, cfg *config.Config) (string, error) {
 	claims := Claims{
 		UserID:   user.ID,
 		Username: user.Username,
+		IsAdmin:  user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(cfg.JWTExpiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -46,6 +48,17 @@ func RequireAuth(cfg *config.Config) fiber.Handler {
 		}
 		c.Locals("userId", claims.UserID)
 		c.Locals("username", claims.Username)
+		c.Locals("isAdmin", claims.IsAdmin)
+		return c.Next()
+	}
+}
+
+func RequireAdmin() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		isAdmin, _ := c.Locals("isAdmin").(bool)
+		if !isAdmin {
+			return c.Status(403).JSON(fiber.Map{"error": "admin access required"})
+		}
 		return c.Next()
 	}
 }

@@ -7,6 +7,7 @@ type User struct {
 	Username     string    `json:"username"`
 	PasswordHash string    `json:"-"`
 	DisplayName  string    `json:"displayName"`
+	IsAdmin      bool      `json:"isAdmin"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
